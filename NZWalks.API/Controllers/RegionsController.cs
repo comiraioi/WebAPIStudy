@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ namespace NZWalks.API.Controllers
 
         //GET: https://localhost:7202/api/regions
         [HttpGet]
+        [Authorize(Roles = "Reader")]     // 인증한 사람만 접근할 수 있음 (비인증 접근시 401에러 발생)
         public async Task<IActionResult> GetAll()   //async: 비동기식 메서드 (병렬적으로 태스크 수행)
         {
             /*var regions = new List<Region>
@@ -88,6 +90,7 @@ namespace NZWalks.API.Controllers
         //GET: https://localhost:7202/api/regions/{id}
         [HttpGet]
         [Route("{id:Guid}")]
+        [Authorize(Roles = "Reader")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             /*
@@ -126,6 +129,7 @@ namespace NZWalks.API.Controllers
         //POST: https://localhost:7202/api/regions
         [HttpPost]
         [ValidateModel]     // CustomActionFilter 사용해 유효성 검사 코드 생략 가능: if (ModelState.IsValid){~쿼리작업~} else{return BadRequest(ModelState);}
+        [Authorize(Roles = "Writer")]
         public async Task<IActionResult> Create([FromBody] AddRegionRequestDto addRegionRequestDto)
         {
             /*
@@ -179,6 +183,7 @@ namespace NZWalks.API.Controllers
         [HttpPut]
         [Route("{id:Guid}")]
         [ValidateModel]
+        [Authorize(Roles = "Writer")]
         public async Task<IActionResult> Put([FromRoute] Guid id, [FromBody] UpdateRegionRequestDto updateRegionRequestDto)
         {
             /*
@@ -240,6 +245,7 @@ namespace NZWalks.API.Controllers
         //Delete: https://localhost:7202/api/regions/{id}
         [HttpDelete]
         [Route("{id:Guid}")]
+        [Authorize(Roles = "Writer")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             /*
