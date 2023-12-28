@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NZWalks.API.CustomActionFilters;
 using NZWalks.API.Models;
 using NZWalks.API.Models.Domain;
 using NZWalks.API.Models.DTO;
 using NZWalks.API.Repositories;
+using System.Text.Json;
 
 namespace NZWalks.API.Controllers
 {
@@ -20,66 +22,88 @@ namespace NZWalks.API.Controllers
         private readonly NZWalksDbContext dbContext;
         private readonly IRegionRepository regionRepository;
         private readonly IMapper mapper;
+        private readonly ILogger<RegionsController> logger;
 
         //DbContext, IRegionRepository의 인터페이스, IMapper의 AutoMApper 주입
-        public RegionsController(NZWalksDbContext dbContext, IRegionRepository regionRepository, IMapper mapper)    
+        public RegionsController(NZWalksDbContext dbContext, IRegionRepository regionRepository, IMapper mapper, ILogger<RegionsController> logger)    
         {
             this.dbContext = dbContext;
             this.regionRepository = regionRepository;
             this.mapper = mapper;
+            this.logger = logger;
         }
 
         #region GetAll
 
         //GET: https://localhost:7202/api/regions
         [HttpGet]
-        [Authorize(Roles = "Reader")]     // 인증한 사람만 접근할 수 있음 (비인증 접근시 401에러 발생)
+        //[Authorize(Roles = "Reader")]     // 인증한 사람 중 권한이 "Reader"인 경우만 접근할 수 있음 (비인증 접근시 401에러, 권한 불일치시 403에러 발생)
         public async Task<IActionResult> GetAll()   //async: 비동기식 메서드 (병렬적으로 태스크 수행)
         {
-            /*var regions = new List<Region>
+            
+            try
             {
-                new Region
+                /*var regions = new List<Region>
                 {
-                    Id = Guid.NewGuid(),
-                    Name = "Auckland Region",
-                    Code = "AKL",
-                    RegionImageUrl = "https://www.pexels.com/photo/black-and-white-17829466/"
-                },
-                new Region
+                    new Region
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = "Auckland Region",
+                        Code = "AKL",
+                        RegionImageUrl = "https://www.pexels.com/photo/black-and-white-17829466/"
+                    },
+                    new Region
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = "Wellington Region",
+                        Code = "WLG",
+                        RegionImageUrl = "https://www.pexels.com/photo/beach-at-dusk-17829445/"
+                    }
+                };*/
+
+                /* //DB에서 가져온 도메인 모델
+                //var regionsDomain = dbContext.Regions.ToList();
+                var regionsDomain = await dbContext.Regions.ToListAsync();  //비동기식 호출*/
+
+
+                //throw new Exception("This is a custom exception");
+
+                //logger.LogInformation("GetAllRegions Action Method was invoked");
+
+                //logger.LogWarning("This is a warning log");
+                //logger.LogError("This is a error log");
+
+                // 비동기식으로 도메인 모델 가져오는 인터페이스 호출
+                var regionsDomain = await regionRepository.GetAllAsync();
+
+                // logger.LogInformation($"Finished GetAllRegions request with data : {JsonSerializer.Serialize(regionsDomain)}");
+
+
+                /* 도메인 모델을 DTO(Data Transfer Object)로 매핑
+                var regionsDto = new List<RegionDto>();
+                foreach (var region in regionsDomain)
                 {
-                    Id = Guid.NewGuid(),
-                    Name = "Wellington Region",
-                    Code = "WLG",
-                    RegionImageUrl = "https://www.pexels.com/photo/beach-at-dusk-17829445/"
-                }
-            };*/
+                    regionsDto.Add(new RegionDto()
+                    {
+                        Id = region.Id,
+                        Code = region.Code,
+                        Name = region.Name,
+                        RegionImageUrl = region.RegionImageUrl
+                    });
+                }*/
+
+                // AutoMapper를 사용해 도메인 모델을 DTO로 매핑
+                var regionsDto = mapper.Map<List<RegionDto>>(regionsDomain);
+
+                return Ok(regionsDto);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, ex.Message);
+                throw;
+            }
 
             
-            /* //DB에서 가져온 도메인 모델
-            //var regionsDomain = dbContext.Regions.ToList();
-            var regionsDomain = await dbContext.Regions.ToListAsync();  //비동기식 호출*/
-
-            // 비동기식으로 도메인 모델 가져오는 인터페이스 호출
-            var regionsDomain = await regionRepository.GetAllAsync();
-
-
-            /* 도메인 모델을 DTO(Data Transfer Object)로 매핑
-            var regionsDto = new List<RegionDto>();
-            foreach (var region in regionsDomain)
-            {
-                regionsDto.Add(new RegionDto()
-                {
-                    Id = region.Id,
-                    Code = region.Code,
-                    Name = region.Name,
-                    RegionImageUrl = region.RegionImageUrl
-                });
-            }*/
-
-            // AutoMapper를 사용해 도메인 모델을 DTO로 매핑
-            var regionsDto = mapper.Map<List<RegionDto>>(regionsDomain);
-
-            return Ok(regionsDto);
         }
 
         #endregion
@@ -90,7 +114,7 @@ namespace NZWalks.API.Controllers
         //GET: https://localhost:7202/api/regions/{id}
         [HttpGet]
         [Route("{id:Guid}")]
-        [Authorize(Roles = "Reader")]
+        //[Authorize(Roles = "Reader")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             /*
@@ -129,7 +153,7 @@ namespace NZWalks.API.Controllers
         //POST: https://localhost:7202/api/regions
         [HttpPost]
         [ValidateModel]     // CustomActionFilter 사용해 유효성 검사 코드 생략 가능: if (ModelState.IsValid){~쿼리작업~} else{return BadRequest(ModelState);}
-        [Authorize(Roles = "Writer")]
+        //[Authorize(Roles = "Writer")]
         public async Task<IActionResult> Create([FromBody] AddRegionRequestDto addRegionRequestDto)
         {
             /*
@@ -183,7 +207,7 @@ namespace NZWalks.API.Controllers
         [HttpPut]
         [Route("{id:Guid}")]
         [ValidateModel]
-        [Authorize(Roles = "Writer")]
+        //[Authorize(Roles = "Writer")]
         public async Task<IActionResult> Put([FromRoute] Guid id, [FromBody] UpdateRegionRequestDto updateRegionRequestDto)
         {
             /*
@@ -245,7 +269,7 @@ namespace NZWalks.API.Controllers
         //Delete: https://localhost:7202/api/regions/{id}
         [HttpDelete]
         [Route("{id:Guid}")]
-        [Authorize(Roles = "Writer")]
+        //[Authorize(Roles = "Writer")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             /*

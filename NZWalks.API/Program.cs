@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -8,13 +10,24 @@ using NZWalks.API;
 using NZWalks.API.Mappings;
 using NZWalks.API.Models;
 using NZWalks.API.Repositories;
+using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 서버 시간 기준 하루마다 로그 파일 생성
+var logger = new LoggerConfiguration().WriteTo.Console()
+                                    .WriteTo.File("Logs/NzWalks_Log.txt", rollingInterval: RollingInterval.Day)
+                                    .MinimumLevel.Information().CreateLogger();
+
 // Add services to the container.
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog();
 
 builder.Services.AddControllers();
+
+builder.Services.AddHttpContextAccessor();  // File Path 설정
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
@@ -61,6 +74,7 @@ builder.Services.AddDbContext<NZWalksAuthDbContext>(options => options.UseSqlSer
 builder.Services.AddScoped<IRegionRepository, SQLRegionRepository>();   //Region
 builder.Services.AddScoped<IWalkRepository, SQLWalkRepository>();       //Walk
 builder.Services.AddScoped<ITokenRepository, TokenRepository>();        //Token
+builder.Services.AddScoped<IImageRepository, LocalImageRepository>();   //Image
 
 // AutoMapper 주입
 //Nuget 패키지 관리자에서 AutoMapper, AutoMapper DepedencyInjection 설치
@@ -109,11 +123,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseMiddleware<ExceptionHandlerMiddleware>();    // 예외 처리 미들웨어
 
+app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// https://localhost:7202/api/Images 경로를 실제 파일이 있는 로컬 경로로 매핑
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Images")),
+    RequestPath = "/Images"
+});
 
 app.MapControllers();
 

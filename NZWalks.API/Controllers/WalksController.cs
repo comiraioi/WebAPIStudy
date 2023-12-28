@@ -6,6 +6,7 @@ using NZWalks.API.Models.Domain;
 using NZWalks.API.Models;
 using NZWalks.API.Repositories;
 using NZWalks.API.CustomActionFilters;
+using System.Net;
 
 namespace NZWalks.API.Controllers
 {
@@ -36,9 +37,34 @@ namespace NZWalks.API.Controllers
                                                 [FromQuery] string? sortBy, [FromQuery] bool? isAscending,
                                                 [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 1000)
         {
+            /*
+            // try~catch 예외 처리
+            try
+            {
+                //throw new Exception("This was the error");
+
+                // 도메인 모델의 모든 데이터 가져오기
+                var walksDomain = await walkRepository.GetAllAsync(filterOn, filterQuery, sortBy, isAscending ?? true   // isAscending이 null이면 true 할당
+                                                                    , pageNumber, pageSize);
+
+                // 도메인 모델을 DTO로 매핑
+                var walksDto = mapper.Map<List<WalkDto>>(walksDomain);
+
+                return Ok(walksDto);
+            }
+            catch (Exception ex)
+            {
+                // 예외 로그 작성
+                return Problem("Something went wrong", null, (int)HttpStatusCode.InternalServerError);
+            }*/
+
+
             // 도메인 모델의 모든 데이터 가져오기
             var walksDomain = await walkRepository.GetAllAsync(filterOn, filterQuery, sortBy, isAscending ?? true   // isAscending이 null이면 true 할당
-                                                                , pageNumber, pageSize); 
+                                                                , pageNumber, pageSize);
+
+            // 예외 생성 > 미들웨어로 전역 예외 처리됨
+            //throw new Exception("This is a new exception");
 
             // 도메인 모델을 DTO로 매핑
             var walksDto = mapper.Map<List<WalkDto>>(walksDomain);
